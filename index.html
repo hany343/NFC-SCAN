@@ -3,42 +3,138 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NFC Test</title>
+<title>ماسح NFC للشاحنات</title>
+<style>
+    body {
+        font-family: 'Tahoma', 'Segoe UI', sans-serif;
+        background: #f0f2f5;
+        text-align: center;
+        padding: 20px;
+    }
+    h1 {
+        color: #333;
+        margin-bottom: 20px;
+    }
+    button {
+        background-color: #4CAF50;
+        color: white;
+        padding: 15px 30px;
+        font-size: 18px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-bottom: 30px;
+    }
+    button:hover {
+        background-color: #45a049;
+    }
+    .card {
+        background-color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 10px auto;
+        max-width: 400px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        text-align: right;
+        direction: rtl;
+    }
+    .field {
+        margin-bottom: 10px;
+        font-size: 16px;
+    }
+    .field strong {
+        color: #555;
+    }
+    #history {
+        max-width: 500px;
+        margin: 20px auto;
+        text-align: left;
+    }
+    #history h2 {
+        text-align: center;
+    }
+</style>
 </head>
 <body>
+
 <h1>ماسح NFC للشاحنات</h1>
 <button id="scanBtn">مسح بطاقة NFC</button>
-<pre id="output">انتظر المسح...</pre>
+
+<div id="currentCard" class="card" style="display:none;">
+    <div class="field"><strong>رقم الشاحنة:</strong> <span id="truckId"></span></div>
+    <div class="field"><strong>خط السير:</strong> <span id="route"></span></div>
+    <div class="field"><strong>الشيفت:</strong> <span id="shift"></span></div>
+    <div class="field"><strong>المصنع:</strong> <span id="factory"></span></div>
+    <div class="field"><strong>وقت المسح:</strong> <span id="scanTime"></span></div>
+</div>
+
+<div id="history">
+    <h2>سجل المسحات</h2>
+</div>
 
 <script>
+const historyDiv = document.getElementById("history");
+
+// Parse NFC text by sequence
+function parseNDEF(text) {
+    // Expected format: ID;Route;Shift;Factory
+    const parts = text.split(";").map(p => p.trim());
+    return {
+        id: parts[0] || "-",
+        route: parts[1] || "-",
+        shift: parts[2] || "-",
+        factory: parts[3] || "-"
+    };
+}
+
 async function readNFC() {
     if (!("NDEFReader" in window)) {
-        document.getElementById("output").innerText = "❌ متصفحك لا يدعم NFC";
+        alert("متصفحك لا يدعم NFC!");
         return;
     }
 
     try {
         const ndef = new NDEFReader();
         await ndef.scan();
-        document.getElementById("output").innerText = "👀 ضع بطاقة NFC الآن...";
+        alert("مرر بطاقة NFC الآن...");
 
         ndef.onreading = event => {
             const decoder = new TextDecoder("utf-8");
             let allText = "";
+
             for (const record of event.message.records) {
-                allText += decoder.decode(record.data) + "\n";
+                allText += decoder.decode(record.data);
             }
 
-            document.getElementById("output").innerText =
-                `UID: ${event.serialNumber || "N/A"}\n\n${allText}`;
+            const data = parseNDEF(allText);
+            const now = new Date().toLocaleString();
+
+            // Show current scan
+            document.getElementById("currentCard").style.display = "block";
+            document.getElementById("truckId").innerText = data.id;
+            document.getElementById("route").innerText = data.route;
+            document.getElementById("shift").innerText = data.shift;
+            document.getElementById("factory").innerText = data.factory;
+            document.getElementById("scanTime").innerText = now;
+
+            // Add to history
+            const card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML = `
+                <div class="field"><strong>رقم الشاحنة:</strong> ${data.id}</div>
+                <div class="field"><strong>خط السير:</strong> ${data.route}</div>
+                <div class="field"><strong>الشيفت:</strong> ${data.shift}</div>
+                <div class="field"><strong>المصنع:</strong> ${data.factory}</div>
+                <div class="field"><strong>وقت المسح:</strong> ${now}</div>
+            `;
+            historyDiv.appendChild(card);
         };
 
         ndef.onreadingerror = () => {
-            document.getElementById("output").innerText = "❌ تعذر قراءة البطاقة";
+            alert("تعذر قراءة البطاقة.");
         };
-
     } catch (err) {
-        document.getElementById("output").innerText = "خطأ: " + err;
+        alert("خطأ: " + err);
     }
 }
 
