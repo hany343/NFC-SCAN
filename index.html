@@ -1,70 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Truck NFC Scanner2</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 50px;
-        }
-        button {
-            padding: 15px 30px;
-            font-size: 18px;
-            cursor: pointer;
-        }
-        p {
-            margin-top: 20px;
-            font-size: 16px;
-            white-space: pre-wrap;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Truck NFC Scanner</title>
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f0f2f5;
+        text-align: center;
+        padding: 20px;
+    }
+    h1 {
+        color: #333;
+    }
+    button {
+        background-color: #4CAF50;
+        color: white;
+        padding: 15px 30px;
+        font-size: 18px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 20px;
+    }
+    button:hover {
+        background-color: #45a049;
+    }
+    .card {
+        background-color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 20px auto;
+        max-width: 400px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        text-align: left;
+    }
+    .field {
+        margin-bottom: 10px;
+        font-size: 16px;
+    }
+    .field strong {
+        color: #555;
+    }
+</style>
 </head>
 <body>
 
-    <h1>Truck NFC Scanner</h1>
-    <button id="scanBtn">Scan NFC Tag 12</button>
-    <p id="output">Waiting for scan...</p>
+<h1>Truck NFC Scanner</h1>
+<button id="scanBtn">Scan NFC Tag</button>
 
-    <script>
-        async function readNFC() {
-            if ("NDEFReader" in window === false) {
-                document.getElementById("output").innerText = "❌ Web NFC not supported!";
-                return;
-            }
+<div id="card" class="card" style="display:none;">
+    <div class="field"><strong>UID:</strong> <span id="uid"></span></div>
+    <div class="field"><strong>Truck ID:</strong> <span id="truckId"></span></div>
+    <div class="field"><strong>Name:</strong> <span id="truckName"></span></div>
+    <div class="field"><strong>Tag Date/Time:</strong> <span id="tagTime"></span></div>
+    <div class="field"><strong>Scan Time:</strong> <span id="scanTime"></span></div>
+</div>
 
-            try {
-                const ndef = new NDEFReader();
-                await ndef.scan();
-                document.getElementById("output").innerText = "👀 Tap the NFC tag...";
+<script>
+    function parseNDEF(text) {
+        // Try JSON first
+        try {
+            return JSON.parse(text);
+        } catch {
+            // Fallback: ID:TR001;NAME:Truck A;TIME:2025-11-25T08:30
+            const obj = {};
+            text.split(";").forEach(pair => {
+                const [k,v] = pair.split(":");
+                if(k && v) obj[k.toLowerCase()] = v;
+            });
+            return obj;
+        }
+    }
 
-                ndef.onreading = event => {
-                    const uid = event.serialNumber || "N/A";
-                    const decoder = new TextDecoder();
-                    let text = "";
-
-                    for (const record of event.message.records) {
-                        text += decoder.decode(record.data);
-                    }
-
-                    document.getElementById("output").innerText =
-                        `UID: ${uid}\nNDEF Text: ${text}`;
-                };
-
-                ndef.onreadingerror = () => {
-                    document.getElementById("output").innerText = "❌ Cannot read NFC tag.";
-                };
-            } catch (err) {
-                document.getElementById("output").innerText = "ERROR: " + err;
-            }
+    async function readNFC() {
+        if ("NDEFReader" in window === false) {
+            alert("Web NFC not supported!");
+            return;
         }
 
-        document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById("scanBtn").addEventListener("click", readNFC);
-        });
-    </script>
+        try {
+            const ndef = new NDEFReader();
+            await ndef.scan();
+            document.getElementById("card").style.display = "block";
+
+            ndef.onreading = event => {
+                const uid = event.serialNumber || "N/A";
+                const decoder = new TextDecoder();
+                let text = "";
+
+                for (const record of event.message.records) {
+                    text += decoder.decode(record.data);
+                }
+
+                const data = parseNDEF(text);
+
+                document.getElementById("uid").innerText = uid;
+                document.getElementById("truckId").innerText = data.id || "-";
+                document.getElementById("truckName").innerText = data.name || "-";
+                document.getElementById("tagTime").innerText = data.datetime || "-";
+                document.getElementById("scanTime").innerText = new Date().toLocaleString();
+            };
+
+            ndef.onreadingerror = () => {
+                alert("Cannot read NFC tag.");
+            };
+        } catch (err) {
+            alert("ERROR: " + err);
+        }
+    }
+
+    document.getElementById("scanBtn").addEventListener("click", readNFC);
+</script>
 
 </body>
 </html>
