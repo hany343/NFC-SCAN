@@ -1,4 +1,4 @@
-export async function readNFC() {
+async function readNFC() {
     if ("NDEFReader" in window === false) {
         document.getElementById("output").innerText = "❌ Web NFC not supported!";
         return;
@@ -30,7 +30,7 @@ export async function readNFC() {
     }
 }
 
-// Bind button click
-document.getElementById("scanBtn").addEventListener("click", () => {
-    readNFC();
+// Bind button click after DOM loads
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("scanBtn").addEventListener("click", readNFC);
 });
