@@ -1,18 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Truck NFC Scanner</title>
 <style>
     body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-family: 'Tahoma', 'Segoe UI', sans-serif;
         background: #f0f2f5;
         text-align: center;
         padding: 20px;
     }
     h1 {
         color: #333;
+        margin-bottom: 20px;
     }
     button {
         background-color: #4CAF50;
@@ -22,7 +23,7 @@
         border: none;
         border-radius: 8px;
         cursor: pointer;
-        margin-top: 20px;
+        margin-bottom: 30px;
     }
     button:hover {
         background-color: #45a049;
@@ -31,10 +32,11 @@
         background-color: white;
         border-radius: 10px;
         padding: 20px;
-        margin: 20px auto;
+        margin: 10px auto;
         max-width: 400px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        text-align: left;
+        text-align: right;
+        direction: rtl;
     }
     .field {
         margin-bottom: 10px;
@@ -43,76 +45,80 @@
     .field strong {
         color: #555;
     }
+    #history {
+        max-width: 500px;
+        margin: 20px auto;
+        text-align: left;
+    }
+    #history h2 {
+        text-align: center;
+    }
+    #history .card {
+        text-align: right;
+        direction: rtl;
+    }
 </style>
 </head>
 <body>
 
-<h1>Truck NFC Scanner</h1>
-<button id="scanBtn">Scan NFC Tag</button>
+<h1>ماسح NFC للشاحنات</h1>
+<button id="scanBtn">مسح بطاقة NFC</button>
 
-<div id="card" class="card" style="display:none;">
+<div id="currentCard" class="card" style="display:none;">
     <div class="field"><strong>UID:</strong> <span id="uid"></span></div>
-    <div class="field"><strong>Truck ID:</strong> <span id="truckId"></span></div>
-    <div class="field"><strong>Name:</strong> <span id="truckName"></span></div>
-    <div class="field"><strong>Tag Date/Time:</strong> <span id="tagTime"></span></div>
-    <div class="field"><strong>Scan Time:</strong> <span id="scanTime"></span></div>
+    <div class="field"><strong>رقم الشاحنة:</strong> <span id="truckId"></span></div>
+    <div class="field"><strong>الاسم:</strong> <span id="truckName"></span></div>
+    <div class="field"><strong>تاريخ البطاقة:</strong> <span id="tagTime"></span></div>
+    <div class="field"><strong>وقت المسح:</strong> <span id="scanTime"></span></div>
+</div>
+
+<div id="history">
+    <h2>سجل المسحات</h2>
 </div>
 
 <script>
-    function parseNDEF(text) {
-        // Try JSON first
-        try {
-            return JSON.parse(text);
-        } catch {
-            // Fallback: ID:TR001;NAME:Truck A;TIME:2025-11-25T08:30
-            const obj = {};
-            text.split(";").forEach(pair => {
-                const [k,v] = pair.split(":");
-                if(k && v) obj[k.toLowerCase()] = v;
-            });
-            return obj;
-        }
+const historyDiv = document.getElementById("history");
+
+function parseNDEF(text) {
+    // Try JSON first
+    try {
+        return JSON.parse(text);
+    } catch {
+        // Fallback: ID:TR001;NAME:Truck A;TIME:2025-11-25T08:30
+        const obj = {};
+        text.split(";").forEach(pair => {
+            const [k,v] = pair.split(":");
+            if(k && v) obj[k.toLowerCase()] = v;
+        });
+        return obj;
+    }
+}
+
+async function readNFC() {
+    if (!("NDEFReader" in window)) {
+        alert("متصفحك لا يدعم NFC!");
+        return;
     }
 
-    async function readNFC() {
-        if ("NDEFReader" in window === false) {
-            alert("Web NFC not supported!");
-            return;
-        }
+    try {
+        const ndef = new NDEFReader();
+        await ndef.scan();
+        alert("مرر بطاقة NFC الآن...");
 
-        try {
-            const ndef = new NDEFReader();
-            await ndef.scan();
-            document.getElementById("card").style.display = "block";
+        ndef.onreading = event => {
+            const decoder = new TextDecoder("utf-8");
+            let allText = "";
 
-            ndef.onreading = event => {
-                const uid = event.serialNumber || "N/A";
-                const decoder = new TextDecoder();
-                let text = "";
+            for (const record of event.message.records) {
+                allText += decoder.decode(record.data);
+            }
 
-                for (const record of event.message.records) {
-                    text += decoder.decode(record.data);
-                }
+            const data = parseNDEF(allText);
+            const uid = event.serialNumber || "N/A";
+            const now = new Date().toLocaleString();
 
-                const data = parseNDEF(text);
-
-                document.getElementById("uid").innerText = uid;
-                document.getElementById("truckId").innerText = data.id || "-";
-                document.getElementById("truckName").innerText = data.name || "-";
-                document.getElementById("tagTime").innerText = data.datetime || "-";
-                document.getElementById("scanTime").innerText = new Date().toLocaleString();
-            };
-
-            ndef.onreadingerror = () => {
-                alert("Cannot read NFC tag.");
-            };
-        } catch (err) {
-            alert("ERROR: " + err);
-        }
-    }
-
-    document.getElementById("scanBtn").addEventListener("click", readNFC);
-</script>
-
-</body>
-</html>
+            // Display current scan
+            document.getElementById("currentCard").style.display = "block";
+            document.getElementById("uid").innerText = uid;
+            document.getElementById("truckId").innerText = data.id || "-";
+            document
