@@ -61,6 +61,7 @@
 <button id="scanBtn">مسح بطاقة NFC</button>
 
 <div id="currentCard" class="card" style="display:none;">
+    <div class="field"><strong>رقم الشريحة:</strong> <span id="cardid"></span></div>
     <div class="field"><strong>رقم الشاحنة:</strong> <span id="truckId"></span></div>
     <div class="field"><strong>خط السير:</strong> <span id="route"></span></div>
     <div class="field"><strong>الشيفت:</strong> <span id="shift"></span></div>
@@ -83,7 +84,8 @@ function parseNDEF(text) {
         id: parts[0] || "-",
         route: parts[1] || "-",
         shift: parts[2] || "-",
-        factory: parts[3] || "-"
+        factory: parts[3] || "-",
+        cardid: parts[4] || "-"
     };
 }
 
@@ -111,6 +113,7 @@ async function readNFC() {
 
             // Show current scan
             document.getElementById("currentCard").style.display = "block";
+              document.getElementById("cardid").innerText = data.cardid;
             document.getElementById("truckId").innerText = data.id;
             document.getElementById("route").innerText = data.route;
             document.getElementById("shift").innerText = data.shift;
@@ -121,6 +124,7 @@ async function readNFC() {
             const card = document.createElement("div");
             card.className = "card";
             card.innerHTML = `
+               <div class="field"><strong>رقم الشريحة:</strong> ${data.cardid}</div>
                 <div class="field"><strong>رقم الشاحنة:</strong> ${data.id}</div>
                 <div class="field"><strong>خط السير:</strong> ${data.route}</div>
                 <div class="field"><strong>الشيفت:</strong> ${data.shift}</div>
