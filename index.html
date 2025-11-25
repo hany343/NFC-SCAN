@@ -2,13 +2,69 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Truck NFC Scanner1</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truck NFC Scanner2</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        p {
+            margin-top: 20px;
+            font-size: 16px;
+            white-space: pre-wrap;
+        }
+    </style>
 </head>
 <body>
-    <h1>Truck NFC Scanner New</h1>
-    <button id="scanBtn">Scan NFC Tag</button>
+
+    <h1>Truck NFC Scanner</h1>
+    <button id="scanBtn">Scan NFC Tag 12</button>
     <p id="output">Waiting for scan...</p>
 
-    <script src="js/nfc.js"></script>
+    <script>
+        async function readNFC() {
+            if ("NDEFReader" in window === false) {
+                document.getElementById("output").innerText = "❌ Web NFC not supported!";
+                return;
+            }
+
+            try {
+                const ndef = new NDEFReader();
+                await ndef.scan();
+                document.getElementById("output").innerText = "👀 Tap the NFC tag...";
+
+                ndef.onreading = event => {
+                    const uid = event.serialNumber || "N/A";
+                    const decoder = new TextDecoder();
+                    let text = "";
+
+                    for (const record of event.message.records) {
+                        text += decoder.decode(record.data);
+                    }
+
+                    document.getElementById("output").innerText =
+                        `UID: ${uid}\nNDEF Text: ${text}`;
+                };
+
+                ndef.onreadingerror = () => {
+                    document.getElementById("output").innerText = "❌ Cannot read NFC tag.";
+                };
+            } catch (err) {
+                document.getElementById("output").innerText = "ERROR: " + err;
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("scanBtn").addEventListener("click", readNFC);
+        });
+    </script>
+
 </body>
 </html>
