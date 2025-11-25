@@ -3,122 +3,47 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Truck NFC Scanner</title>
-<style>
-    body {
-        font-family: 'Tahoma', 'Segoe UI', sans-serif;
-        background: #f0f2f5;
-        text-align: center;
-        padding: 20px;
-    }
-    h1 {
-        color: #333;
-        margin-bottom: 20px;
-    }
-    button {
-        background-color: #4CAF50;
-        color: white;
-        padding: 15px 30px;
-        font-size: 18px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        margin-bottom: 30px;
-    }
-    button:hover {
-        background-color: #45a049;
-    }
-    .card {
-        background-color: white;
-        border-radius: 10px;
-        padding: 20px;
-        margin: 10px auto;
-        max-width: 400px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        text-align: right;
-        direction: rtl;
-    }
-    .field {
-        margin-bottom: 10px;
-        font-size: 16px;
-    }
-    .field strong {
-        color: #555;
-    }
-    #history {
-        max-width: 500px;
-        margin: 20px auto;
-        text-align: left;
-    }
-    #history h2 {
-        text-align: center;
-    }
-    #history .card {
-        text-align: right;
-        direction: rtl;
-    }
-</style>
+<title>NFC Test</title>
 </head>
 <body>
-
 <h1>ماسح NFC للشاحنات</h1>
 <button id="scanBtn">مسح بطاقة NFC</button>
-
-<div id="currentCard" class="card" style="display:none;">
-    <div class="field"><strong>UID:</strong> <span id="uid"></span></div>
-    <div class="field"><strong>رقم الشاحنة:</strong> <span id="truckId"></span></div>
-    <div class="field"><strong>الاسم:</strong> <span id="truckName"></span></div>
-    <div class="field"><strong>تاريخ البطاقة:</strong> <span id="tagTime"></span></div>
-    <div class="field"><strong>وقت المسح:</strong> <span id="scanTime"></span></div>
-</div>
-
-<div id="history">
-    <h2>سجل المسحات</h2>
-</div>
+<pre id="output">انتظر المسح...</pre>
 
 <script>
-const historyDiv = document.getElementById("history");
-
-function parseNDEF(text) {
-    // Try JSON first
-    try {
-        return JSON.parse(text);
-    } catch {
-        // Fallback: ID:TR001;NAME:Truck A;TIME:2025-11-25T08:30
-        const obj = {};
-        text.split(";").forEach(pair => {
-            const [k,v] = pair.split(":");
-            if(k && v) obj[k.toLowerCase()] = v;
-        });
-        return obj;
-    }
-}
-
 async function readNFC() {
     if (!("NDEFReader" in window)) {
-        alert("متصفحك لا يدعم NFC!");
+        document.getElementById("output").innerText = "❌ متصفحك لا يدعم NFC";
         return;
     }
 
     try {
         const ndef = new NDEFReader();
         await ndef.scan();
-        alert("مرر بطاقة NFC الآن...");
+        document.getElementById("output").innerText = "👀 ضع بطاقة NFC الآن...";
 
         ndef.onreading = event => {
             const decoder = new TextDecoder("utf-8");
             let allText = "";
-
             for (const record of event.message.records) {
-                allText += decoder.decode(record.data);
+                allText += decoder.decode(record.data) + "\n";
             }
 
-            const data = parseNDEF(allText);
-            const uid = event.serialNumber || "N/A";
-            const now = new Date().toLocaleString();
+            document.getElementById("output").innerText =
+                `UID: ${event.serialNumber || "N/A"}\n\n${allText}`;
+        };
 
-            // Display current scan
-            document.getElementById("currentCard").style.display = "block";
-            document.getElementById("uid").innerText = uid;
-            document.getElementById("truckId").innerText = data.id || "-";
-            document
+        ndef.onreadingerror = () => {
+            document.getElementById("output").innerText = "❌ تعذر قراءة البطاقة";
+        };
+
+    } catch (err) {
+        document.getElementById("output").innerText = "خطأ: " + err;
+    }
+}
+
+document.getElementById("scanBtn").addEventListener("click", readNFC);
+</script>
+
+</body>
+</html>
